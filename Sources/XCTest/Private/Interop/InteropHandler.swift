@@ -10,6 +10,8 @@
 //  InteropHandler.swift
 //
 
+import Foundation
+
 enum Interop {}
 
 extension Interop {
@@ -36,10 +38,79 @@ extension Interop {
     enum Handler {}
 }
 
+extension XCTestCase {
+    /// Records a failure created by another test library in the execution of
+    /// the test for this test run. Must not be called unless the run has been
+    /// started. Must not be called if the test run has been stopped.
+    ///
+    /// - Parameter event: The event record representing a failure. This is
+    ///   typically populated by a foreign test library.
+    func recordFailure(event: Interop.Event) {
+        let description = {
+            // TODO: format the failure description like this
+            // currentTestCase.recordFailure(
+            //     withDescription: "\(result.failureDescription(assertion)) - \(message())",
+            let innerDesc = event.messages.map { $0.text }.joined(separator: "\n")
+            return innerDesc.isEmpty ? "<no description>" : innerDesc
+        }()
+
+        // TODO: need to validate that the event is a failure methinks
+        let sourceLocation = event.issue?.sourceLocation
+        let filePath = sourceLocation?.filePath ?? "<unknown file>"
+        let line = sourceLocation?.line ?? -1
+
+        self.recordFailure(
+            withDescription: description,
+            inFile: filePath,
+            atLine: line,
+            expected: false)  // TODO: need to check if this was due to being an exception or not
+    }
+}
+
 extension Interop.Handler {
     static func debugPrint(_ message: String) {
         if Interop.Config.debugPrint {
             print(message)
+        }
+    }
+
+    static let supportedSchemaVersion = "6.4"
+
+    /// XCTest's fallback event handler, which is used to handle issues reported by other test libraries.
+    static let handler: FallbackEventHandler = { recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, reserved in
+        // TODO: should do some schema validation
+        // guard
+        //     let schemaVersion = String(validatingCString: recordJSONSchemaVersionNumber),
+        //     schemaVersion == supportedSchemaVersion
+        // else {
+        //     let schemaVersion = String(validatingCString: recordJSONSchemaVersionNumber)
+        //     debugPrint(
+        //         """
+        //         Unsupported schema version provided to fallback event handler.
+        //         Got \(schemaVersion ?? "<unknown>") and expected \(supportedSchemaVersion)"
+        //         """
+        //     )
+        //     return
+        // }
+
+        // Memory is managed by the caller of the fallback event handler, so do
+        // not attempt to deallocate when done.
+        let jsonData = Data(
+            bytesNoCopy: .init(mutating: recordJSONBaseAddress),
+            count: recordJSONByteCount,
+            deallocator: .none)
+
+        do {
+            let outputRecord = try JSONDecoder().decode(Interop.OutputRecord.self, from: jsonData)
+
+            guard let currentTestCase = XCTCurrentTestCase else {
+                debugPrint("Called without current test case")
+                return
+            }
+
+            currentTestCase.recordFailure(event: outputRecord.payload)
+        } catch {
+            debugPrint("Unable to convert json event into an output record: \(error)")
         }
     }
 
@@ -61,14 +132,6 @@ extension Interop.Handler {
 }
 
 extension Interop.Handler {
-
-    /// XCTest's fallback event handler, which is used to handle issues reported by other test libraries.
-    static let handler: FallbackEventHandler = {
-        recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, reserved in
-        // Not implemented yet
-        debugPrint("Interop: handler called")
-    }
-
     /// The currently installed fallback event handler, which is provided by the
     /// testing library that is hosting tests.
     ///
