@@ -19,6 +19,7 @@ let package = Package(
     targets: [
         .target(
             name: "XCTest", dependencies: [], path: "Sources",
+            swiftSettings: [.enableExperimentalFeature("Extern")],
             linkerSettings: [.linkedLibrary("_TestingInterop")])
     ]
 )

@@ -19,10 +19,12 @@ extension Interop {
 extension Interop.Config {
     static let optInEnvName = "XCT_EXPERIMENTAL_ENABLE_INTEROP"
     static let isEnabledAtRuntime = {
-        ProcessInfo.processInfo.environment[optInEnvName] == "1"
+        // ProcessInfo.processInfo.environment[optInEnvName] == "1"
+        true
     }()
     static let debugPrint = {
-        ProcessInfo.processInfo.environment["XCT_EXPERIMENTAL_ENABLE_INTEROP_DEBUG"] == "1"
+        // ProcessInfo.processInfo.environment["XCT_EXPERIMENTAL_ENABLE_INTEROP_DEBUG"] == "1"
+        true
     }()
 }
 
@@ -47,7 +49,6 @@ extension Interop.Handler {
     /// Install can only be performed once per process, and subsequent attempts
     /// will fail.
     static func install() {
-#if XCT_BUILD_WITH_INTEROP
         guard Interop.Config.isEnabledAtRuntime else {
             debugPrint("Interop: disabled because \(Interop.Config.optInEnvName) not set")
             return
@@ -56,13 +57,8 @@ extension Interop.Handler {
         debugPrint("Interop: installing XCTest's interop handler")
         let ok = installer(handler)
         debugPrint("Interop: install \(ok ? "succeeded" : "failed! Interop is disabled")")
-#else
-        debugPrint("Interop: disabled because this was built without XCT_BUILD_WITH_INTEROP")
-#endif
     }
 }
-
-#if XCT_BUILD_WITH_INTEROP
 
 extension Interop.Handler {
 
@@ -111,5 +107,3 @@ extension Interop.Handler {
     @_extern(c, "_swift_testing_getFallbackEventHandler")
     static func getter() -> FallbackEventHandler?
 }
-
-#endif
