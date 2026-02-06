@@ -108,6 +108,7 @@ extension Interop.Handler {
                 return
             }
 
+            debugPrint("🔄 Handling interop event 🔄")
             currentTestCase.recordFailure(event: outputRecord.payload)
         } catch {
             debugPrint("Unable to convert json event into an output record: \(error)")
