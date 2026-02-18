@@ -10,6 +10,8 @@
 //  XCTAssert.swift
 //
 
+import Foundation
+
 private enum _XCTAssertion {
     case equal
     case equalWithAccuracy
@@ -101,6 +103,38 @@ private func _XCTEvaluateAssertion(_ assertion: _XCTAssertion, message: @autoclo
                 inFile: String(describing: file),
                 atLine: Int(line),
                 expected: result.isExpected)
+        } else {
+            // Interop: send it the active test library (that isn't XCTest)
+            guard let fallbackHandler = Interop.Handler._activeFallbackEventHandler else { return }
+            let isOurInstalledHandler =
+                unsafeBitCast(fallbackHandler, to: UnsafeRawPointer.self)
+                == unsafeBitCast(Interop.Handler.ourFallbackEventHandler, to: UnsafeRawPointer.self)
+            guard !isOurInstalledHandler else {
+                // The fallback event handler belongs to XCTest, so we don't want
+                // to call it on our own behalf.
+                return
+            }
+
+            let location = Interop.Event.Issue.SourceLocation( fileID: "", filePath: String(describing: file), line: Int(line), column:0)
+
+            let event = Interop.Event(
+                kind: "issueRecorded",
+                instant: .init(absolute: 0, since1970: NSDate().timeIntervalSince1970), // TODO: absolute time is wrong
+                issue: .init(isKnown: false, sourceLocation: location),
+                attachment: nil,
+                messages: [.init(symbol: "fail", text: "\(result.failureDescription(assertion)) - \(message())")],
+                testId: nil,
+            )
+            let outputRecord = Interop.OutputRecord(payload:event)
+
+            do {
+                let encodedEvent = try JSONEncoder().encode(outputRecord)
+                encodedEvent.withUnsafeBytes { ptr in
+                    fallbackHandler("6.3", ptr.baseAddress!, ptr.count, nil)
+                }
+            } catch {
+                print("Failed to encode event: \(error)")
+            }
         }
     }
 }

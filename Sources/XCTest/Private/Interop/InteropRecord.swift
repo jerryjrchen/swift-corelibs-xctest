@@ -13,6 +13,8 @@
 extension Interop {
     struct OutputRecord: Codable {
         var payload: Event
+        var version = "6.3"
+        var kind = "event"
     }
 
     /// An event that appears in the event stream.

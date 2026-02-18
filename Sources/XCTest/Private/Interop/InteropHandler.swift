@@ -77,7 +77,7 @@ extension Interop.Handler {
     static let supportedSchemaVersion = "6.4"
 
     /// XCTest's fallback event handler, which is used to handle issues reported by other test libraries.
-    static let handler: FallbackEventHandler = { recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, reserved in
+    static let ourFallbackEventHandler: FallbackEventHandler = { recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, reserved in
         // TODO: should do some schema validation
         // guard
         //     let schemaVersion = String(validatingCString: recordJSONSchemaVersionNumber),
@@ -127,7 +127,7 @@ extension Interop.Handler {
         }
 
         debugPrint("Interop: installing XCTest's interop handler")
-        let ok = installer(handler)
+        let ok = installer(ourFallbackEventHandler)
         debugPrint("Interop: install \(ok ? "succeeded" : "failed! Interop is disabled")")
     }
 }
@@ -139,7 +139,7 @@ extension Interop.Handler {
     /// For example, when XCTAssert is called in a Swift Testing test, Swift
     /// Testing installs a handler, and XCTest will store its address in
     /// `_installedHandler`.
-    private static var _installedHandler: FallbackEventHandler? = getter()
+    static let _activeFallbackEventHandler: FallbackEventHandler? = getter()
 }
 
 /// A fallback event handler is called by a testing library when it wants to
