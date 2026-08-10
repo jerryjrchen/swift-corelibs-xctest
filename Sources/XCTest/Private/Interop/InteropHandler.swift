@@ -101,11 +101,8 @@ extension Interop.Handler {
         // When building for the toolchain, support ABI versions 6.3 to 6.4.
 #if XCT_CAN_USE_TESTING_SPI
         guard
-            let schemaVersionNumber = String(
-                validatingCString: recordJSONSchemaVersionNumber
-            ).flatMap(ABI.VersionNumber.init),
-            (ABI.v6_3.versionNumber...ABI.v6_4.versionNumber).contains(schemaVersionNumber),
-            ABI.version(forVersionNumber: schemaVersionNumber) != nil else {
+            let schemaVersionNumber = ABI.VersionNumber.init(validatingCString: recordJSONSchemaVersionNumber),
+            (ABI.v6_3.versionNumber...ABI.v6_4.versionNumber).contains(schemaVersionNumber) else {
             return
         }
 #else
